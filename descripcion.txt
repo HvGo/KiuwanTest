@@ -1,0 +1,96 @@
+- create de la tabla de aportes con query : Fact_aportes_v5 ()
+- crear procedure que carga la tabla detalle aportes con merge teniendo delete para que conserve 6 meses de historia.
+- cargar 6 meses actuales
+- tabla clasificación de ram (ruc,cussp,mesanalisis). compara con mes anterior. 
+- crear procedure para crear tablas temporales y luego hacer merge para insertar los registros de clasificacion.
+- ver los parametros (fechas de acreditacion, pago planilla y mes de devengue )
+- la clasificacion de ram son los tipo de planilla (001,002,008,009)
+- en el detalle de aportes agregar la clasificacion de ram (verificar si hace en tableau)
+------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------
+querys
+
+2 - CLASIFICACION DE RAM:  						(CARGA DE 6 MESES) (INDICES:MES DE ANALISIS, RUC, CUSSP,(MES DE ANALISIS) )
+4 - MES ACTUAL		: FECHAS DE ACREDITACION 1 MES			(TEMPORAL)
+3 - MES ANTERIOR	: FECHAS DE ACREDITACION 2 MESES Y PAGO 1 MES	(TEMPORAL)
+1 - FACT APORTES V5	:	(MISMOS INDICES DE DW UD_PLANILLA Y UD_DETALLE_PLANILLA)(CADA VEZ QUE SE CARGUE DEBE DE TENER EL MES ACTUAL Y 5 MESES ANTERIORES)
+REZAGOS
+EXCESOS
+
+--------------------------------------------------------------------------------------------------
+create or replace procedure insert_or_update_student(
+p_id number, p_firstname varchar2, p_lastname varchar2
+) as
+begin
+    merge into student st using dual on (id = p_id)
+         when not matched then insert (id, firstname, lastname) 
+           values (p_id, p_firstname, p_lastname)
+         when matched then update set 
+           firstname = p_firstname, lastname = p_lastname, modifiedate = SYSDATE
+end insert_or_update_student;
+---------------------------------------------------------------------------------------------------
+select  add_months(round(sysdate,'MONTH'),-1) as INI , last_day(sysdate) as FIN from dual
+select  add_months(round(sysdate,'MONTH'),-6) as INI,last_day(add_months(round(sysdate,'MONTH'),-1)) from dual
+
+
+/*********************************************ESTRUCTURA DE TABLA****************************************************/
+SELECT column_name, data_type, data_length, data_precision, data_scale, nullable FROM all_tab_columns WHERE table_name = 'NOMBRE_TABLA'
+/*********************************************COLUMNA EN TABLA****************************************************/
+SELECT * from all_tab_columns where column_name LIKE '%DESTIPTRABAJADOR%';
+/*********************************************BORRAR****************************************************/
+select  add_months(round(sysdate,'MONTH'),-7), last_day(add_months(round(sysdate,'MONTH'),-7)) from dual
+/*********************************************INSERTAR*************************************************/
+select  add_months(round(sysdate,'MONTH'),-1), last_day(add_months(round(sysdate,'MONTH'),-1)) from dual
+/*********************************************INSERTAR*************************************************/
+SELECT add_months(trunc(sysdate, 'mm'),- LEVEL), last_day(add_months(trunc(sysdate, 'mm'),- LEVEL)) from dual  
+where 1=1 CONNECT BY LEVEL <= 5  
+/*********************************************PERIODO*************************************************/
+  SELECT EXTRACT(YEAR from SYSDATE)||TRIM(TO_CHAR(EXTRACT(MONTH from add_months(trunc(sysdate, 'mm'),-1 - LEVEL)),'00' )) from dual  
+  where 1=1 CONNECT BY LEVEL <= 5  
+/*********************************************RANGO DE FECHAS*************************************************/
+SELECT add_months(trunc(sysdate, 'mm'),- LEVEL), last_day(add_months(trunc(sysdate, 'mm'),- LEVEL)) from dual  
+where 1=1 CONNECT BY LEVEL <= 5  
+
+
+create or replace procedure SP_BORRAR_INSERTAR(
+p_id number, p_firstname varchar2, p_lastname varchar2
+) as
+begin
+    merge into student st using dual on (id = p_id)
+         when not matched then insert (id, firstname, lastname) 
+           values (p_id, p_firstname, p_lastname)
+         when matched then update set 
+           firstname = p_firstname, lastname = p_lastname, modifiedate = SYSDATE
+end insert_or_update_student;
+
+
+DECLARE 
+   a number(2); 
+BEGIN 
+   FOR a in 1 .. 6 LOOP 
+      SELECT  TO_DATE(add_months(trunc(sysdate, 'mm'),-1),'dd/mm/yy') FROM DUAL;
+  END LOOP; 
+END; 
+
+
+SELECT 
+add_months(round(sysdate,'MONTH'), - 1 - LEVEL), last_day(add_months(round(sysdate,'MONTH'),-1 - LEVEL))
+FROM DUAL
+CONNECT BY LEVEL <= 6
+ORDER BY MESES;
+
+WITH COUNTER(
+select  add_months(round(sysdate,'MONTH'),-1), last_day(add_months(round(sysdate,'MONTH'),-1)) from dual
+WHERE 
+)
+
+WITH counter
+AS ( SELECT LEVEL seq
+       FROM DUAL
+     CONNECT BY LEVEL <= 6 ORDER BY 1 DESC )
+     
+SELECT TO_DATE(add_months(trunc(sysdate, 'mm'),- seq),'dd/mm/yy') myYear
+  FROM counter;
+  
+  
